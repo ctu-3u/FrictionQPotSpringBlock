@@ -918,7 +918,7 @@ inline size_t System::triggerWeakest(double eps, int direction)
 
 ////////////////////System_thermal begins////////////////////////////////
 template <class T>
-inline System_thermal::System_thermal(
+inline SystemThermalRandomForcing::SystemThermalRandomForcing(
     double tmp,
     double m,
     double eta,
@@ -931,12 +931,12 @@ inline System_thermal::System_thermal(
         init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
         m_thermal = tmp;
         m_teprt = 0;
-        m_N = x_y.shape(0);
-        m_f_thermal = xt::zeros<double>({m_N});
+        temp_N = x_y.shape(0);
+        m_f_thermal = xt::zeros<double>({temp_N});
 }
 
 template <class T, class I>
-inline System_thermal::System_thermal(
+inline SystemThermalRandomForcing::SystemThermalRandomForcing(
     double tmp,
     double m,
     double eta,
@@ -949,12 +949,12 @@ inline System_thermal::System_thermal(
         init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
         m_thermal = tmp;
         m_teprt = 0;
-        m_N = x_y.shape(0);
-        m_f_thermal = xt::zeros<double>({m_N});
+        temp_N = x_y.shape(0);
+        m_f_thermal = xt::zeros<double>({temp_N});
 }
 
 
-inline void System_thermal::timeStep()
+inline void SystemThermalRandomForcing::timeStep()
 {
     m_t += m_dt;
     xt::noalias(m_v_n) = m_v;
@@ -987,7 +987,7 @@ inline void System_thermal::timeStep()
     }
 }
 
-inline void System_thermal::GenerateThermalRandomForce(){
+inline void SystemThermalRandomForcing::GenerateThermalRandomForce(){
     m_f_thermal = xt::random::randn<double>(m_f_thermal.shape(),0.0,1.0);
 }
 

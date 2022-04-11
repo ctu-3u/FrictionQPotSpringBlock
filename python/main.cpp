@@ -333,5 +333,52 @@ PYBIND11_MODULE(_FrictionQPotSpringBlock, m)
             .def("__repr__", [](const SM::System&) {
                 return "<FrictionQPotSpringBlock.Line1d.System>";
             });
+
+        py::class_<SM::SystemThermalRandomForcing>(sm,"SystemThermalRandomForcing")
+
+            .def(
+                py::init<
+                    double,
+                    double,
+                    double,
+                    double,
+                    double,
+                    double,
+                    double,
+                    xt::pytensor<double,2>&>(),
+                "SystemThermalRandomForcing",
+                py::arg("tmp"),
+                py::arg("m"),
+                py::arg("eta"),
+                py::arg("mu"),
+                py::arg("k_neighbours"),
+                py::arg("k_frame"),
+                py::arg("dt"),
+                py::arg("x_y"))
+
+            .def(
+                py::init<
+                    double,
+                    double,
+                    double,
+                    double,
+                    double,
+                    double,
+                    double,
+                    const xt::pytensor<double, 2>&,
+                    const xt::pytensor<long, 1>&>(),
+                "SystemThermalRandomForcing",
+                py::arg("tmp")
+                py::arg("m"),
+                py::arg("eta"),
+                py::arg("mu"),
+                py::arg("k_neighbours"),
+                py::arg("k_frame"),
+                py::arg("dt"),
+                py::arg("x_y"),
+                py::arg("istart"))
+
+            .def("timeStep",&SM::SystemThermalRandomForcing::timeStep,"timeStep")
+            .def("GenerateThermalRandomForce",&SM::SystemThermalRandomForcing::GenerateThermalRandomForce,"GenerateThermalRandomForce");
     }
 }
