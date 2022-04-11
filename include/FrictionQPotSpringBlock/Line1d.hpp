@@ -916,6 +916,65 @@ inline size_t System::triggerWeakest(double eps, int direction)
     return p;
 }
 
+////////////////////System_thermal begins////////////////////////////////
+template <class T>
+inline System_thermal::System_thermal(
+    double tmp,
+    double m,
+    double eta,
+    double mu,
+    double k_neighbours,
+    double k_frame,
+    double dt,
+    const T& x_y){
+        xt::xtensor<long, 1> istart = xt::zeros<long>({x_yield.shape(0)});
+        m_model.init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
+        m_thermal = tmp;
+        m_teprt = 0;
+        m_N = x_y.shape(0);
+        m_f_thermal = xt::zeros<double>({m_N});
+}
+
+template <class T, class I>
+inline System_thermal::System_thermal(
+    double tmp,
+    double m,
+    double eta,
+    double mu,
+    double k_neighbours,
+    double k_frame,
+    double dt,
+    const T& x_y,
+    const I& istart){
+        m_model.init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
+        m_thermal = tmp;
+        m_teprt = 0;
+        m_N = x_y.shape(0);
+        m_f_thermal = xt::zeros<double>({m_N});
+}
+
+inline void System_thermal::timeStep(){
+    m_model.timeStep();
+    this->ComputeForceThermally();
+    xt::noalias(m_model.m_a) = m_model.m_f / m_model.m_m;
+}
+
+inline void System_thermal::ComputeForceThermally()
+{
+    xt::noalias(m_model.m_f) = m_model.m_f_potential + m_model.m_f_neighbours + m_model.m_f_damping + m_model.m_f_frame + m_f_thermal;
+}
+
+inline void System_thermal::GenerateThermalRandomForce(){
+    m_f_thermal = xt::random::randn<double>(m_f_thermal.shape(),0.0,1.0);
+}
+
+
+////////////////////System_thermal ends/////////////////////////////////
+
+
+
+
+
 } // namespace Line1d
 } // namespace FrictionQPotSpringBlock
 

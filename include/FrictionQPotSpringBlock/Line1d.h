@@ -11,7 +11,7 @@ Line in 1d.
 
 #include "config.h"
 #include "version.h"
-
+#include <prrng.h>
 #include <GooseFEM/Iterate.h>
 #include <GooseFEM/version.h>
 #include <QPot/Chunked.hpp>
@@ -19,6 +19,7 @@ Line in 1d.
 #include <xtensor/xnorm.hpp>
 #include <xtensor/xshape.hpp>
 #include <xtensor/xtensor.hpp>
+#include <xtensor/xrandom.hpp>
 
 namespace FrictionQPotSpringBlock {
 
@@ -631,6 +632,9 @@ protected:
     */
     double advanceUniformly(double dx, bool input_is_frame = true);
 
+    
+    friend class System_thermal; // To make a combined class to deal with thermal conditions.
+
 protected:
     xt::xtensor<double, 1> m_f; ///< See #f.
     xt::xtensor<double, 1> m_f_potential; ///< See #f_potential.
@@ -657,6 +661,29 @@ protected:
     double m_k_frame; ///< Stiffness of the load fame (same for all particles).
     double m_x_frame = 0.0; ///< See #set_x_frame.
 };
+
+class System_thermal{
+public:
+    System m_model;
+
+    System_thermal() = default;
+    template <class T> System_thermal(double tmp,double m,double eta,double mu,
+        double k_neighbours,double k_frame,double dt,const T& x_y);
+    template <class T, class I> System_thermal(double tmp,double m,double eta,double mu,
+        double k_neighbours,double k_frame,double dt,const T& x_y,const I& istart);
+    void timeStep();
+
+protected:
+    void GenerateThermalRandomForce();
+    void ComputeForceThermally();
+
+    double m_thermal; // Set temperature.
+    double m_teprt; // Instantaneous temperature.
+    xt::xtensor<double, 1> m_f_thermal; // The randomly generated forces representing thermal effects.
+};
+
+/////////////////////////////////////////////////////
+
 
 } // namespace Line1d
 } // namespace FrictionQPotSpringBlock
