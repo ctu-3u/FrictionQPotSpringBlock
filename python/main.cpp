@@ -334,7 +334,7 @@ PYBIND11_MODULE(_FrictionQPotSpringBlock, m)
                 return "<FrictionQPotSpringBlock.Line1d.System>";
             });
 
-        py::class_<SM::SystemThermalRandomForcing>(sm,"SystemThermalRandomForcing")
+        py::class_<SM::SystemThermalRandomForcing,SM::System>(sm,"SystemThermalRandomForcing")
 
             .def(
                 py::init<
