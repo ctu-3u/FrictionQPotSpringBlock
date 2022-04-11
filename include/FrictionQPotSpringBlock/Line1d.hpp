@@ -928,7 +928,7 @@ inline System_thermal::System_thermal(
     double dt,
     const T& x_y){
         xt::xtensor<long, 1> istart = xt::zeros<long>({x_yield.shape(0)});
-        m_model.init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
+        init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
         m_thermal = tmp;
         m_teprt = 0;
         m_N = x_y.shape(0);
@@ -946,27 +946,51 @@ inline System_thermal::System_thermal(
     double dt,
     const T& x_y,
     const I& istart){
-        m_model.init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
+        init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
         m_thermal = tmp;
         m_teprt = 0;
         m_N = x_y.shape(0);
         m_f_thermal = xt::zeros<double>({m_N});
 }
 
-inline void System_thermal::timeStep(){
-    m_model.timeStep();
-    this->ComputeForceThermally();
-    xt::noalias(m_model.m_a) = m_model.m_f / m_model.m_m;
-}
 
-inline void System_thermal::ComputeForceThermally()
+inline void System_thermal::timeStep()
 {
-    xt::noalias(m_model.m_f) = m_model.m_f_potential + m_model.m_f_neighbours + m_model.m_f_damping + m_model.m_f_frame + m_f_thermal;
+    m_t += m_dt;
+    xt::noalias(m_v_n) = m_v;
+    xt::noalias(m_a_n) = m_a;
+    this->GenerateThermalRandomForce();
+
+    xt::noalias(m_x) = m_x + m_dt * m_v + 0.5 * std::pow(m_dt, 2.0) * m_a;
+    this->updated_x();
+
+    xt::noalias(m_v) = m_v_n + m_dt * m_a_n;
+    this->updated_v();
+    xt::noalias(m_f) = m_f + m_f_thermal;
+
+    xt::noalias(m_a) = m_f / m_m;
+
+    xt::noalias(m_v) = m_v_n + 0.5 * m_dt * (m_a_n + m_a);
+    this->updated_v();
+    xt::noalias(m_f) = m_f + m_f_thermal;
+
+    xt::noalias(m_a) = m_f / m_m;
+
+    xt::noalias(m_v) = m_v_n + 0.5 * m_dt * (m_a_n + m_a);
+    this->updated_v();
+    xt::noalias(m_f) = m_f + m_f_thermal;
+
+    xt::noalias(m_a) = m_f / m_m;
+
+    if (xt::any(xt::isnan(m_x))) {
+        throw std::runtime_error("NaN entries found");
+    }
 }
 
 inline void System_thermal::GenerateThermalRandomForce(){
     m_f_thermal = xt::random::randn<double>(m_f_thermal.shape(),0.0,1.0);
 }
+
 
 
 ////////////////////System_thermal ends/////////////////////////////////

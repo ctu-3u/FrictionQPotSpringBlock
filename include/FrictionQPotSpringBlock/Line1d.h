@@ -388,7 +388,7 @@ public:
     Effectuates time step using the velocity Verlet algorithm.
     Updates #x, #v, #a, and #f.
     */
-    void timeStep();
+    virtual void timeStep();
 
     /**
     Make a number of time steps, see timeStep().
@@ -662,20 +662,17 @@ protected:
     double m_x_frame = 0.0; ///< See #set_x_frame.
 };
 
-class System_thermal{
+class SystemThermalRandomForcing : public System{
 public:
-    System m_model;
-
-    System_thermal() = default;
-    template <class T> System_thermal(double tmp,double m,double eta,double mu,
+    SystemThermalRandomForcing() = default;
+    template <class T> SystemThermalRandomForcing(double tmp,double m,double eta,double mu,
         double k_neighbours,double k_frame,double dt,const T& x_y);
-    template <class T, class I> System_thermal(double tmp,double m,double eta,double mu,
+    template <class T, class I> SystemThermalRandomForcing(double tmp,double m,double eta,double mu,
         double k_neighbours,double k_frame,double dt,const T& x_y,const I& istart);
-    void timeStep();
+    void timeStep() override;
 
 protected:
     void GenerateThermalRandomForce();
-    void ComputeForceThermally();
 
     double m_thermal; // Set temperature.
     double m_teprt; // Instantaneous temperature.
