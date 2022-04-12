@@ -446,8 +446,9 @@ inline size_t System::inc() const
 
 inline double System::temperature() const
 {
-    // TODO !!
-    return 0.0;
+    temperature_inst = xt::norm_sq(m_v)();
+    temperature_inst = m_temperature_inst * m_m /  m_N; // take Boltzmann constant to be 1
+    return temperature_inst;
 }
 
 inline double System::x_frame() const
