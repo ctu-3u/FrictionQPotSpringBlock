@@ -395,7 +395,13 @@ inline xt::xtensor<long, 1> System::i() const
 
 inline void System::set_t(double arg)
 {
-    m_t = arg;
+    m_inc = static_cast<size_t>(arg / m_dt);
+    FRICTIONQPOTSPRINGBLOCK_REQUIRE(xt::allclose(this->t(), arg));
+}
+
+inline void System::set_inc(size_t arg)
+{
+    m_inc = arg;
 }
 
 inline void System::set_x_frame(double arg)
@@ -430,7 +436,17 @@ inline void System::set_a(const T& arg)
 
 inline double System::t() const
 {
-    return m_t;
+    return static_cast<double>(m_inc) * m_dt;
+}
+
+inline size_t System::inc() const
+{
+    return m_inc;
+}
+
+inline double System::temperature() const
+{
+    return m_tp_inst;
 }
 
 inline double System::x_frame() const
@@ -544,7 +560,7 @@ inline void System::quench()
 
 inline void System::timeStep()
 {
-    m_t += m_dt;
+    m_inc++;
     xt::noalias(m_v_n) = m_v;
     xt::noalias(m_a_n) = m_a;
 
@@ -565,6 +581,8 @@ inline void System::timeStep()
     this->updated_v();
 
     xt::noalias(m_a) = m_f / m_m;
+
+    m_tp_inst = xt::norm_sq(m_v)() * m_m /  m_N; // take Boltzmann constant to be 1
 
     if (xt::any(xt::isnan(m_x))) {
         throw std::runtime_error("NaN entries found");
@@ -661,7 +679,7 @@ System::minimise_boundcheck(size_t nmargin, double tol, size_t niter_tol, size_t
     xt::noalias(m_x_t) = m_x;
     xt::noalias(m_v_t) = m_v;
     xt::noalias(m_a_t) = m_a;
-    m_t_t = m_t;
+    size_t inc = m_inc;
 
     for (size_t iiter = 1; iiter < max_iter + 1; ++iiter) {
 
@@ -677,7 +695,7 @@ System::minimise_boundcheck(size_t nmargin, double tol, size_t niter_tol, size_t
             xt::noalias(m_x) = m_x_t;
             xt::noalias(m_v) = m_v_t;
             xt::noalias(m_a) = m_a_t;
-            m_t = m_t_t;
+            m_inc = inc;
             return 0;
         }
     }
@@ -741,7 +759,7 @@ inline size_t System::minimise_timeactivity_boundcheck(
     xt::noalias(m_x_t) = m_x;
     xt::noalias(m_v_t) = m_v;
     xt::noalias(m_a_t) = m_a;
-    m_t_t = m_t;
+    size_t inc = m_inc;
 
     auto i_n = this->i();
     long s = 0;
@@ -781,7 +799,7 @@ inline size_t System::minimise_timeactivity_boundcheck(
             xt::noalias(m_x) = m_x_t;
             xt::noalias(m_v) = m_v_t;
             xt::noalias(m_a) = m_a_t;
-            m_t = m_t_t;
+            m_inc = inc;
             return 0;
         }
     }
@@ -916,28 +934,24 @@ inline size_t System::triggerWeakest(double eps, int direction)
     return p;
 }
 
-////////////////////System_thermal begins////////////////////////////////
 template <class T>
 inline SystemThermalRandomForcing::SystemThermalRandomForcing(
-    double tmp,
     double m,
     double eta,
     double mu,
     double k_neighbours,
     double k_frame,
     double dt,
-    const T& x_y){
-        xt::xtensor<long, 1> istart = xt::zeros<long>({x_yield.shape(0)});
-        init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
-        m_thermal = tmp;
-        m_teprt = 0;
-        temp_N = x_y.shape(0);
-        m_f_thermal = xt::zeros<double>({temp_N});
+    const T& x_y)
+{
+    m_seq = false;
+    m_f_thermal = xt::zeros<double>({x_y.shape(0)});
+    xt::xtensor<long, 1> istart = xt::zeros<long>({x_y.shape(0)});
+    this->init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
 }
 
 template <class T, class I>
 inline SystemThermalRandomForcing::SystemThermalRandomForcing(
-    double tmp,
     double m,
     double eta,
     double mu,
@@ -945,59 +959,61 @@ inline SystemThermalRandomForcing::SystemThermalRandomForcing(
     double k_frame,
     double dt,
     const T& x_y,
-    const I& istart){
-        init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
-        m_thermal = tmp;
-        m_teprt = 0;
-        temp_N = x_y.shape(0);
-        m_f_thermal = xt::zeros<double>({temp_N});
+    const I& istart)
+{
+    m_seq = false;
+    m_f_thermal = xt::zeros<double>({x_y.shape(0)});
+    this->init(m, eta, mu, k_neighbours, k_frame, dt, x_y, istart);
 }
 
-
-inline void SystemThermalRandomForcing::timeStep()
+inline void SystemThermalRandomForcing::computeForce()
 {
-    m_t += m_dt;
-    xt::noalias(m_v_n) = m_v;
-    xt::noalias(m_a_n) = m_a;
-    this->GenerateThermalRandomForce();
+    if (m_seq) {
+        for (size_t p = 0; p < m_N; ++p) {
+            if (m_inc >= m_seq_s(p, m_seq_i(p) + 1)) {
+                m_seq_i(p)++;
+                FRICTIONQPOTSPRINGBLOCK_ASSERT(m_seq_i(p) < m_seq_f.shape(1));
+                FRICTIONQPOTSPRINGBLOCK_ASSERT(m_inc < m_seq_s(p, m_seq_i(p) + 1));
+            }
+            if (m_inc >= m_seq_s(p, m_seq_i(p))) {
+                m_f_thermal(p) = m_seq_f(p, m_seq_i(p));
+            }
+        }
+    }
 
-    xt::noalias(m_x) = m_x + m_dt * m_v + 0.5 * std::pow(m_dt, 2.0) * m_a;
-    this->updated_x();
+    xt::noalias(m_f) = m_f_potential + m_f_neighbours + m_f_damping + m_f_frame + m_f_thermal;
+}
 
-    xt::noalias(m_v) = m_v_n + m_dt * m_a_n;
-    this->updated_v();
-    xt::noalias(m_f) = m_f + m_f_thermal;
+template <class T>
+inline void SystemThermalRandomForcing::setRandomForce(const T& f)
+{
+    FRICTIONQPOTSPRINGBLOCK_ASSERT(f.dimension() == 1);
+    FRICTIONQPOTSPRINGBLOCK_ASSERT(f.size() == m_N);
 
-    xt::noalias(m_a) = m_f / m_m;
+    m_seq = false;
+    m_f_thermal = f;
+}
 
-    xt::noalias(m_v) = m_v_n + 0.5 * m_dt * (m_a_n + m_a);
-    this->updated_v();
-    xt::noalias(m_f) = m_f + m_f_thermal;
+template <class T, class U>
+inline void SystemThermalRandomForcing::setRandomForceSequence(const T& f, const U& s)
+{
+    FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::has_shape(f, {m_N, s.shape(1) - 1}));
+    FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::has_shape(s, {m_N, f.shape(1) + 1}));
+    //FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::all(xt::equal(s, xt::sort(s, 1))));
+    FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::all(xt::view(s, xt::all(), 0) <= m_inc));
+    FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::all(xt::view(s, xt::all(), s.shape(1) - 1) > m_inc));
 
-    xt::noalias(m_a) = m_f / m_m;
+    m_seq = true;
+    m_seq_f = f;
+    m_seq_s = s;
+    m_seq_i = xt::argmax(m_seq_s >= m_inc, 1);
 
-    xt::noalias(m_v) = m_v_n + 0.5 * m_dt * (m_a_n + m_a);
-    this->updated_v();
-    xt::noalias(m_f) = m_f + m_f_thermal;
-
-    xt::noalias(m_a) = m_f / m_m;
-
-    if (xt::any(xt::isnan(m_x))) {
-        throw std::runtime_error("NaN entries found");
+    for (size_t p = 0; p < m_N; ++p) {
+        if (m_inc >= m_seq_s(p, m_seq_i(p))) {
+            m_f_thermal(p) = m_seq_f(p, m_seq_i(p));
+        }
     }
 }
-
-inline void SystemThermalRandomForcing::GenerateThermalRandomForce(){
-    m_f_thermal = xt::random::randn<double>(m_f_thermal.shape(),0.0,1.0);
-}
-
-
-
-////////////////////System_thermal ends/////////////////////////////////
-
-
-
-
 
 } // namespace Line1d
 } // namespace FrictionQPotSpringBlock
