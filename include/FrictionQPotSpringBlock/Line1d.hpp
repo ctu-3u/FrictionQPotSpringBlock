@@ -1009,15 +1009,12 @@ inline void SystemThermalRandomForcing::setRandomForceSequence(const T& f, const
     m_seq_s = s;
     m_seq_i = xt::argmax(m_seq_s >= m_inc, 1);
 
-<<<<<<< Updated upstream
-=======
     // todo: move to top, replace "m_seq_s" -> "s", after new release of xtensor with
     // https://github.com/xtensor-stack/xtensor/pull/2510
     FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::all(xt::equal(s, xt::sort(m_seq_s, 1))));
 
     
 
->>>>>>> Stashed changes
     for (size_t p = 0; p < m_N; ++p) {
         if (m_inc >= m_seq_s(p, m_seq_i(p))) {
             m_f_thermal(p) = m_seq_f(p, m_seq_i(p));

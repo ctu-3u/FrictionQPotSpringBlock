@@ -59,10 +59,6 @@ delta_gamma = 5e-2
 ret_x_frame = np.empty([nout], dtype=float)
 ret_f_frame = np.empty([nout], dtype=float)
 ret_t_insta = np.empty([nout], dtype=float)
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
 
 for iout in tqdm.tqdm(range(nout)):
 
@@ -72,19 +68,6 @@ for iout in tqdm.tqdm(range(nout)):
     ret_f_frame[iout] = np.mean(system.f_frame())
     ret_t_insta[iout] = system.temperature()
 
-<<<<<<< Updated upstream
-with h5py.File(os.path.join(os.path.dirname(__file__), "ThermalRandomForcing.h5")) as file:
-    assert np.allclose(ret_x_frame, file["x_frame"][...])
-    assert np.allclose(ret_f_frame, file["f_frame"][...])
-    assert np.allclose(ret_t_insta, file["t_insta"][...])
-
-# plot output
-
-
-fig, ax = plt.subplots()
-ax.plot(ret_x_frame, ret_f_frame)
-plt.show()
-=======
 # with h5py.File(os.path.join(os.path.dirname(__file__), "ThermalRandomForcing.h5")) as file:
 #     assert np.allclose(ret_x_frame, file["x_frame"][...])
 #     assert np.allclose(ret_f_frame, file["f_frame"][...])
@@ -96,4 +79,4 @@ fig, ax = plt.subplots()
 ax.plot(ret_x_frame, ret_f_frame)
 plt.show()
 plt.savefig('thermal_f_frame.png', bbox_inches='tight')
->>>>>>> Stashed changes
+
