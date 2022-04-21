@@ -446,9 +446,7 @@ inline size_t System::inc() const
 
 inline double System::temperature() const
 {
-    temperature_inst = xt::norm_sq(m_v)();
-    temperature_inst = m_temperature_inst * m_m /  m_N; // take Boltzmann constant to be 1
-    return temperature_inst;
+    return m_tp_inst;
 }
 
 inline double System::x_frame() const
@@ -583,6 +581,8 @@ inline void System::timeStep()
     this->updated_v();
 
     xt::noalias(m_a) = m_f / m_m;
+
+    m_tp_inst = xt::norm_sq(m_v)() * m_m /  m_N; // take Boltzmann constant to be 1
 
     if (xt::any(xt::isnan(m_x))) {
         throw std::runtime_error("NaN entries found");
@@ -999,7 +999,7 @@ inline void SystemThermalRandomForcing::setRandomForceSequence(const T& f, const
 {
     FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::has_shape(f, {m_N, s.shape(1) - 1}));
     FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::has_shape(s, {m_N, f.shape(1) + 1}));
-    FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::all(xt::equal(s, xt::sort(s, ptrdiff_t(1)))));
+    //FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::all(xt::equal(s, xt::sort(s, 1))));
     FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::all(xt::view(s, xt::all(), 0) <= m_inc));
     FRICTIONQPOTSPRINGBLOCK_ASSERT(xt::all(xt::view(s, xt::all(), s.shape(1) - 1) > m_inc));
 

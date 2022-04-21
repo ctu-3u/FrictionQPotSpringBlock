@@ -685,6 +685,7 @@ protected:
     double m_k_neighbours; ///< Stiffness of interactions (same for all particles).
     double m_k_frame; ///< Stiffness of the load fame (same for all particles).
     double m_x_frame = 0.0; ///< See #set_x_frame.
+    double m_tp_inst = 0.0; ///< Instantaneous temperature.
 };
 
 /**
